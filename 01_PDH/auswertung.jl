@@ -210,6 +210,11 @@ for (i, j) in enumerate([11,12,10,9,8])
     # shift data by center
     df.f .-= df.f[center0]
 
+    # smooth data and calculate mean deviation
+    smooth_y = savitzky_golay(df.CH2, 5001, 2).y
+    deviation = mean(abs.(df.CH2 .- smooth_y))
+    println("Vpp = $(Vpplabel[i]), deviation = $deviation")
+
     # plot data
     scatter(df.f[1:10:end], df.CH2[1:10:end], s=1)
 end
@@ -230,72 +235,67 @@ plt.tight_layout()
 plt.show()
 end
 
-logspace = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000]
+# construct logspace by placing five datapoints in each decade
+start = log10(10)
+stop = log10(10000)
+num_points = 25  # Adjust this value to change the number of points
 
-# for (i, j) in enumerate([11,12,10,9,8])
-for (i, j) in enumerate([12])
-    if j < 10
-        j = "0$j"
-    end
-    df = CSV.read(joinpath(@__DIR__, "data/T00$j.CSV"), DataFrame, header=["t", "CH1", "peak1", "CH2", "peak2"], skipto=17)
-    df.f = t_to_f(df.t) .* 1e3
-
-    # identify min and max
-    minidx, maxidx = argmin(df.CH2), argmax(df.CH2)
-    # sort min max so that min is first
-    maxidx, minidx = sort([minidx, maxidx])
-
-    # find first datapoint that reaches 0 coming from both sides
-    min0 = findfirst(df.CH2[maxidx:end] .<= 0.0001) + maxidx - 1
-    max0 = -findfirst(df.CH2[minidx:-1:maxidx] .>= -0.0001) + minidx + 1
-    center0 = (min0 + max0) ÷ 2
-
-    # shift data by center
-    df.f .-= df.f[center0]
-
-    # plot data
-    # scatter(df.f[1:10:end], df.CH2[1:10:end], s=1, label=Vpplabel[i])
-    # store values in matrix
-    data = zeros(length(logspace), 7)
-
-    for (k, window) in enumerate(logspace)
-        for (l, poly) in enumerate(2:8)
-            print("window: $window, poly: $poly\n")
-            # smooth data
-            smooth_y = savitzky_golay(df.CH2, window + 1, poly).y
-            # plot(df.f, smooth_y)
-            # calculate mean deviation from smoothed data
-            deviation = mean(abs.(df.CH2 .- smooth_y))
-            data[k, l] = deviation
-            print("deviation: $deviation\n")
-            # quantify scatter in smoothed data
-            
-            if poly == 4
-                if k == 1
-                    scatter(df.f[1:10:end], df.CH2[1:10:end], s=1)
-                end
-                plot(df.f, smooth_y, label="window$window")
-            end
-        end
-    end
-    plt.legend()
-    plt.show()
-end
-data
-# plot data as heatmap
+colors = ["C0", "C1", "C4"]
+logspace = 10 .^ range(start, stop, length=num_points)
 begin
-    fig, ax = plt.subplots(figsize=(7, 3.5))
-    c = ax.imshow(data, cmap="viridis", aspect="auto", interpolation="nearest")
-    ax.set_xticks(0:8)
-    # ax.set_xticklabels([2:8])
-    ax.set_yticks(0:2:18)
-    ax.set_yticklabels(logspace[1:2:end])
-    # ax.set_xlabel(L"\mathrm{Polynomial\ Order}")
-    # ax.set_ylabel(L"\mathrm{Window\ Size}")
-    # cbar = fig.colorbar(c)
-    # cbar.set_label(L"\mathrm{Mean\ Deviation}")
-    plt.tight_layout()
-    # plt.savefig(string(@__DIR__, "/bilder/smoothing.pdf"), bbox_inches="tight")
-    plt.show()
+ax = plt.subplots(1, 2, figsize=(7, 3.5))[1]
+df = CSV.read(joinpath(@__DIR__, "data/T0012.CSV"), DataFrame, header=["t", "CH1", "peak1", "CH2", "peak2"], skipto=17)
+df.f = t_to_f(df.t) .* 1e3
+
+# identify min and max
+minidx, maxidx = argmin(df.CH2), argmax(df.CH2)
+# sort min max so that min is first
+maxidx, minidx = sort([minidx, maxidx])
+
+# find first datapoint that reaches 0 coming from both sides
+min0 = findfirst(df.CH2[maxidx:end] .<= 0.0001) + maxidx - 1
+max0 = -findfirst(df.CH2[minidx:-1:maxidx] .>= -0.0001) + minidx + 1
+center0 = (min0 + max0) ÷ 2
+
+# shift data by center
+df.f .-= df.f[center0]
+
+# plot data
+i = 0
+for (k, window) in enumerate(logspace)
+    # round logrange to next odd number
+    window = round(Int, window)
+    if window % 2 == 0
+        window += 1
+    end
+    # smooth data
+    smooth_y = savitzky_golay(df.CH2, window, 2).y
+    # calculate mean deviation from smoothed data
+    deviation = mean(abs.(df.CH2 .- smooth_y))
+    
+    ax[1].scatter(window, deviation, s=35, ec="k", marker="o", fc="none")
+    if k in [4, 19, 24]
+        i += 1
+        ax[0].plot(df.f, smooth_y, label="window = $window", c=colors[i])
+        ax[1].scatter(window, deviation, label=latexstring("\\mathrm{window} = $window"), s=35, ec="k", marker="o", c=colors[i])
+    end
+ax[0].scatter(df.f, df.CH2, label=L"\mathrm{Data}", s=1, c="k")
 end
+ax[0].set_xlim(-75, 0)
+ax[0].set_ylim(bottom=-0.012)
+ax[1].set_xscale("log")
+
+ax[0].set_xlabel(L"\Delta\nu\ (\mathrm{MHz})")
+ax[0].set_ylabel(L"A\ \mathrm{(arb.u.)}")
+ax[1].set_xlabel(L"\mathrm{Window\ Size}")
+ax[1].set_ylabel(L"\mathrm{Mean\ Deviation}")
+
+# ax1 scientific notation for yaxis ticks
+ax[1].ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+ax[1].legend()
+plt.tight_layout()
+# plt.savefig(string(@__DIR__, "/bilder/smoothing.pdf"), bbox_inches="tight")
+plt.show()
+end
+
 
