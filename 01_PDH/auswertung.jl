@@ -70,8 +70,8 @@ begin
     ax.arrow(0.55, 0.53, -0.345, 0., length_includes_head=true, overhang=.1, head_width=0.03, head_length=0.03, transform=ax.transAxes, fc="white")
     ax.text(0.45, 0.56, L"\nu_{\mathrm{FSR}} \stackrel{!}{=} 1\ \mathrm{GHz}", fontsize=14, transform=ax.transAxes)
     
-    ax.text(0.4, 0.36, L"F = 81.11(7)", fontsize=14, transform=ax.transAxes)
-    ax.text(0.4, 0.26, L"R = 96.201(3)\ \%", fontsize=14, transform=ax.transAxes)
+    ax.text(0.4, 0.36, L"F = 84.79(5)", fontsize=14, transform=ax.transAxes)
+    ax.text(0.4, 0.26, L"R = 96.363(2)\ \%", fontsize=14, transform=ax.transAxes)
     rect = mpl.patches.FancyBboxPatch((0.4, 0.23), 0.225, 0.2, ec="C1", fc="none", transform=ax.transAxes, boxstyle=mpl.patches.BoxStyle("Round", pad=0.02))
     ax.add_patch(rect)
 
